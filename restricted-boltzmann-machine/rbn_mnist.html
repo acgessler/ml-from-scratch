@@ -43,7 +43,25 @@
         	#sample_training_examples, #sample_test_examples {
         		float: left;
         	}
+
+        	#eval_chart {
+        		width: 900px;
+        		height: 250px;
+        		float: left;
+        	}
+
+        	#filters {
+        		width: 900px;
+        	}
         </style>
+         <script type="text/javascript"
+          src="https://www.google.com/jsapi?autoload={
+            'modules':[{
+              'name':'visualization',
+              'version':'1',
+              'packages':['corechart']
+            }]
+          }"></script>
 </head>
 <body>
 
@@ -70,7 +88,7 @@
 	<h2>Evaluation</h2>
 	<button id="full_eval_test">Full eval (test set)</button>
 	<pre id="evaluation_log"></pre>
-	<text></text>
+	<div id="eval_chart"></div>
 </div>
 
 <div class="container">

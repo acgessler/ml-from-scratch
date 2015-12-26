@@ -118,10 +118,14 @@ function UpdateReconstructionExamples() {
 
 function UpdateStats() {
 	$('#evaluation_log').text(
-		'approx_eval_classification_error: ' + util.Mean(approx_eval_classification_error) + '\n' +
-		'approx_eval_reconstruction_error: ' + util.Mean(approx_eval_reconstruction_error) + '\n' +
-		'approx_eval_classification_error_train: ' + util.Mean(approx_eval_classification_error_train) + '\n' +
-		'approx_eval_reconstruction_error_train: ' + util.Mean(approx_eval_reconstruction_error_train) + '\n' +
+		'averaged_approx_eval_classification_error: ' + util.Mean(approx_eval_classification_error) + '\n' +
+		'averaged_approx_eval_reconstruction_error: ' + util.Mean(approx_eval_reconstruction_error) + '\n' +
+		'averaged_approx_eval_classification_error_train: ' + util.Mean(approx_eval_classification_error_train) + '\n' +
+		'averaged_approx_eval_reconstruction_error_train: ' + util.Mean(approx_eval_reconstruction_error_train) + '\n' +
+		'last_approx_eval_classification_error: ' + approx_eval_classification_error[0] + '\n' +
+		'last_approx_eval_reconstruction_error: ' + approx_eval_reconstruction_error[0] + '\n' +
+		'last_approx_eval_classification_error_train: ' + approx_eval_classification_error_train[0] + '\n' +
+		'last_approx_eval_reconstruction_error_train: ' + approx_eval_reconstruction_error_train[0] + '\n' +
 		'full_eval_classification_error: ' + full_eval_classification_error + '\n' +
 		'full_eval_reconstruction_error: ' + full_eval_reconstruction_error + '\n'
 	);
@@ -162,6 +166,7 @@ function TrainSingleBatch(update_all) {
 
 	if (update_all || batches % EVAL_FREQUENCY == 0) {
 		EvalApproximate();
+		UpdateEvalChart();
 		console.log('evalapproximate done');
 	}
 	UpdateStats();
@@ -192,23 +197,53 @@ function TrainStop() {
 }
 
 function AddStat(arr, stat) {
-	arr.push(stat);
+	arr.unshift(stat);
 	if (arr.length > STATS_AVERAGING_WINDOW) {
-		arr.shift();
+		arr.pop();
 	}
 }
+
+var eval_history = [];
 
 function EvalApproximate() {
 	AddStat(approx_eval_classification_error, rbn.evalClassificationError(test_examples, EVAL_SIZE));
 	AddStat(approx_eval_reconstruction_error, rbn.evalReconstructionError(test_examples, EVAL_SIZE));
 	AddStat(approx_eval_classification_error_train, rbn.evalClassificationError(train_examples, EVAL_SIZE));
 	AddStat(approx_eval_reconstruction_error_train, rbn.evalReconstructionError(train_examples, EVAL_SIZE));
+	eval_history.push([
+		batches,
+		approx_eval_classification_error[0],
+		approx_eval_classification_error_train[0]
+	]);
 }
 
 function EvalFull() {
 	full_eval_classification_error = rbn.evalClassificationError(test_examples, /* no sampling */ -1);
 	full_eval_reconstruction_error = rbn.evalReconstructionError(test_examples, /* no sampling */ -1);
 	UpdateStats();
+}
+
+function UpdateEvalChart() {
+	if (!google.visualization) {
+		console.log('skipping chart update, google.viz not yet loaded');
+		return;
+	}
+	var data = google.visualization.arrayToDataTable([
+      ['batches', 'class error (test)', 'class error (train)']
+    ].concat(eval_history));
+
+    var options = {
+    	hAxis: {
+     		title: 'batches'
+     	},
+      	title: '',
+      	legend: {
+      		position: 'bottom'
+      	}
+    };
+
+    var chart = new google.visualization.LineChart($('#eval_chart')[0]);
+    chart.draw(data, options);
 }
 
 function UpdateFilters() {
