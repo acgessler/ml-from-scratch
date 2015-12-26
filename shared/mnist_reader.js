@@ -16,7 +16,7 @@ mnist_reader.readLabeledImageExamplesFromBuffer = function(data_buffer, label_bu
 	var labeled_examples = [];
 	var data_cursor = mnist_reader.IMAGES_HEADER;
 	var label_cursor = mnist_reader.LABEL_HEADER;
-	while (data_cursor <= data_buffer.length && label_cursor <= label_buffer.length) {
+	while (data_cursor < data_buffer.length && label_cursor < label_buffer.length) {
 		var pixels = new Uint8ClampedArray(mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT);
 		var pixel_cursor = 0;
 		for (var x = 0; x < mnist_reader.MNIST_WIDTH; ++x) {
