@@ -192,7 +192,7 @@ models.RBN.prototype.classifyExample = function(example) {
 
 	var max_class_activation = 0.0;
 	var predicted_class_index = 0;
-	for (var class_index = 0; class_index < this.class_activations; ++class_index) {
+	for (var class_index = 0; class_index < this.class_activations.length; ++class_index) {
 		if (this.class_activations[class_index] > max_class_activation) {
 			max_class_activation = this.class_activations[class_index];
 			predicted_class_index = class_index;
