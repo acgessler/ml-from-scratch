@@ -63,6 +63,13 @@ util.SampleCategoricalInPlace = function(category_probabilities) {
 
 util.SumReducer = function(a,b) {return (a || 0) + (b || 0);};
 
+util.Mean = function(arr) {
+	if (!arr.length) {
+		return NaN;
+	}
+	return arr.reduce(util.SumReducer) / arr.length;
+};
+
 util.SampleNormal = /* function(mean, variance) */ (function() {
 	// Straightforward JS version of the C code in Wikipedia / Box Mueller Transform
 	// see https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform

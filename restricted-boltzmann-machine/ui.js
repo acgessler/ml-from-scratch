@@ -6,15 +6,19 @@ var test_examples;
 var train_running = false;
 var batches = 0;
 
+var HIDDEN_UNITS = 1000;
+
 var FIXED_LEARNING_RATE = 0.01;
 var AUTO_TUNE_LEARNING_RATE = true;
 var learning_rate = -1;
 
-var approx_eval_classification_error = 1.0;
-var approx_eval_reconstruction_error = 100000;
+// Array-typed stats are averaged over multile values to reduce noise.
+var STATS_AVERAGING_WINDOW = 10;
+var approx_eval_classification_error = [];
+var approx_eval_reconstruction_error = [];
 // Evaluation error on training set is for diagnosing overfitting.
-var approx_eval_classification_error_train = 1.0;
-var approx_eval_reconstruction_error_train = 100000;
+var approx_eval_classification_error_train = [];
+var approx_eval_reconstruction_error_train = [];
 var full_eval_classification_error = 1.0;
 var full_eval_reconstruction_error = 100000;
 
@@ -31,7 +35,7 @@ var EVAL_SIZE = 150;
 
 function Init() {
 	var pixel_count = mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT;
-	rbn = new models.RBN(pixel_count, Math.floor(pixel_count * 0.2), 10);
+	rbn = new models.RBN(pixel_count, HIDDEN_UNITS, 10);
 
 	UpdateSampleTrainingExamples();
 	UpdateSampleTestExamples();
@@ -112,10 +116,10 @@ function UpdateReconstructionExamples() {
 
 function UpdateStats() {
 	$('#evaluation_log').text(
-		'approx_eval_classification_error: ' + approx_eval_classification_error + '\n' +
-		'approx_eval_reconstruction_error: ' + approx_eval_reconstruction_error + '\n' +
-		'approx_eval_classification_error_train: ' + approx_eval_classification_error_train + '\n' +
-		'approx_eval_reconstruction_error_train: ' + approx_eval_reconstruction_error_train + '\n' +
+		'approx_eval_classification_error: ' + util.Mean(approx_eval_classification_error) + '\n' +
+		'approx_eval_reconstruction_error: ' + util.Mean(approx_eval_reconstruction_error) + '\n' +
+		'approx_eval_classification_error_train: ' + util.Mean(approx_eval_classification_error_train) + '\n' +
+		'approx_eval_reconstruction_error_train: ' + util.Mean(approx_eval_reconstruction_error_train) + '\n' +
 		'full_eval_classification_error: ' + full_eval_classification_error + '\n' +
 		'full_eval_reconstruction_error: ' + full_eval_reconstruction_error + '\n'
 	);
@@ -177,11 +181,18 @@ function TrainStop() {
 	train_running = false;
 }
 
+function AddStat(arr, stat) {
+	arr.push(stat);
+	if (arr.length > STATS_AVERAGING_WINDOW) {
+		arr.shift();
+	}
+}
+
 function EvalApproximate() {
-	approx_eval_classification_error = rbn.evalClassificationError(test_examples, EVAL_SIZE);
-	approx_eval_reconstruction_error = rbn.evalReconstructionError(test_examples, EVAL_SIZE);
-	approx_eval_classification_error_train = rbn.evalClassificationError(train_examples, EVAL_SIZE);
-	approx_eval_reconstruction_error_train = rbn.evalReconstructionError(train_examples, EVAL_SIZE);
+	AddStat(approx_eval_classification_error, rbn.evalClassificationError(test_examples, EVAL_SIZE));
+	AddStat(approx_eval_reconstruction_error, rbn.evalReconstructionError(test_examples, EVAL_SIZE));
+	AddStat(approx_eval_classification_error_train, rbn.evalClassificationError(train_examples, EVAL_SIZE));
+	AddStat(approx_eval_reconstruction_error_train, rbn.evalReconstructionError(train_examples, EVAL_SIZE));
 }
 
 function EvalFull() {
