@@ -214,7 +214,7 @@ function UpdateFilters() {
 }
 
 $(document).ready(function(){
-    mnist_reader.loadTrainAndTestSetsViaXhr('mnist/', function(train_examples_, test_examples_) {
+    mnist_reader.loadTrainAndTestSetsViaXhr('../data/mnist/', function(train_examples_, test_examples_) {
     	train_examples = train_examples_;
     	test_examples = test_examples_;
     	console.log("Loaded training examples: " + train_examples.length);
