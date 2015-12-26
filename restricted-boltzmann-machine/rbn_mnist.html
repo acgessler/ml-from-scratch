@@ -9,35 +9,78 @@
         <script type="text/javascript" src="mnist_reader.js"></script>
         <script type="text/javascript" src="rbn.js"></script>
         <script type="text/javascript" src="ui.js"></script>
+        <style>
+        	.container {
+        		float: left;
+        		width: 100%;
+        	}
+
+        	.label {
+        		float: left;
+        		width: 28px;
+        		height: 28px;
+        		box-sizing: border-box;
+        		margin: 0px;
+        		padding: 0px;
+
+        		border-color: lightgray;
+        		border-style: solid;
+    			border-width: 1px;
+
+        		font-size: 20px;
+        		text-align: center;
+       			color: darkblue;
+        	}
+
+        	.label.correct {
+        		color: darkgreen;
+        	}
+
+        	.label.incorrect {
+        		color: red;
+        	}
+
+        	#sample_training_examples, #sample_test_examples {
+        		float: left;
+        	}
+        </style>
 </head>
 <body>
 
-<h2>Sample training examples</h2>
-<div id="sample_training_examples">
+<h1>Restricted Boltzmann Machine for MNIST</h1>
+<div class="container">
+	<h2>Sample training examples</h2>
+	<div id="sample_training_examples"></div>
 </div>
 
-
-<h2>Sample test examples</h2>
-<div id="sample_test_examples">
+<div class="container">
+	<h2>Sample test examples</h2>
+	<div id="sample_test_examples"></div>
 </div>
 
-<h2>Training</h2>
-<button id="train_batch">Train Single Batch</button>
-<button id="train_start">Start Training</button>
-<button id="train_stop">Stop Training</button>
-<pre id="training_log"></pre>
-
-<h2>Evaluation</h2>
-<button id="full_eval_test">Full eval (test set)</button>
-<pre id="evaluation_log"></pre>
-<text></text>
-
-<h2>Filters</h2>
-<div id="filters">
+<div class="container">
+	<h2>Training</h2>
+	<button id="train_batch">Train Single Batch</button>
+	<button id="train_start">Start Training</button>
+	<button id="train_stop">Stop Training</button>
+	<pre id="training_log"></pre>
 </div>
 
-<h2>Sample reconstructions for classes</h2>
-<div id="sample_recon_examples">
+<div class="container">
+	<h2>Evaluation</h2>
+	<button id="full_eval_test">Full eval (test set)</button>
+	<pre id="evaluation_log"></pre>
+	<text></text>
+</div>
+
+<div class="container">
+	<h2>Filters</h2>
+	<div id="filters"></div>
+</div>
+
+<div class="container">
+	<h2>Sample reconstructions for classes</h2>
+	<div id="sample_recon_examples"></div>
 </div>
 
 <div style="display: none;">
