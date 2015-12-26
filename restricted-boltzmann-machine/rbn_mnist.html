@@ -1,0 +1,49 @@
+<html>
+<head>
+        <title>Restricted Boltzmann Machine for MNIST</title>
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
+        <script type="text/javascript" src="util.js"></script>
+        <script type="text/javascript" src="example.js"></script>
+        <script type="text/javascript" src="image_example.js"></script>
+        <script type="text/javascript" src="label.js"></script>
+        <script type="text/javascript" src="mnist_reader.js"></script>
+        <script type="text/javascript" src="rbn.js"></script>
+        <script type="text/javascript" src="ui.js"></script>
+</head>
+<body>
+
+<h2>Sample training examples</h2>
+<div id="sample_training_examples">
+</div>
+
+
+<h2>Sample test examples</h2>
+<div id="sample_test_examples">
+</div>
+
+<h2>Training</h2>
+<button id="train_batch">Train Single Batch</button>
+<button id="train_start">Start Training</button>
+<button id="train_stop">Stop Training</button>
+<pre id="training_log"></pre>
+
+<h2>Evaluation</h2>
+<button id="full_eval_test">Full eval (test set)</button>
+<pre id="evaluation_log"></pre>
+<text></text>
+
+<h2>Filters</h2>
+<div id="filters">
+</div>
+
+<h2>Sample reconstructions for classes</h2>
+<div id="sample_recon_examples">
+</div>
+
+<div style="display: none;">
+	<!-- Scratch canvas for making images out of MNIST examples -->
+	<canvas id="temp_digit_canvas" width=28 height=28></canvas>
+</div>
+
+</body>
+</html>
