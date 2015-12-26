@@ -7,12 +7,14 @@ var train_running = false;
 var full_eval_requested = false;
 var batches = 0;
 
-var HIDDEN_UNITS = 1000;
-
+// Model hyperparameters
+var GIBBS_SAMPLING_STEPS = 3; // CD-k
+var HIDDEN_UNITS = 350; 
 var FIXED_LEARNING_RATE = 0.01;
 var AUTO_TUNE_LEARNING_RATE = true;
-var learning_rate = -1;
+var BATCH_SIZE = 20;
 
+var learning_rate = -1;
 // Array-typed stats are averaged over multile values to reduce noise.
 var STATS_AVERAGING_WINDOW = 10;
 var approx_eval_classification_error = [];
@@ -23,10 +25,9 @@ var approx_eval_reconstruction_error_train = [];
 var full_eval_classification_error = 1.0;
 var full_eval_reconstruction_error = 100000;
 
-var BATCH_SIZE = 20;
+// UI/eval parameters
 var EXAMPLE_SAMPLES = 30;
 var RECON_SAMPLES = 10;
-
 var EVAL_FREQUENCY = 25;
 var UPDATE_RECONSTRUCTION_FREQUENCY = 25;
 var UPDATE_FILTERS_FREQUENCY = 10;
@@ -128,14 +129,18 @@ function UpdateStats() {
 		'batches: ' + batches + '\n' +
 		'total_examples: ' + batches * BATCH_SIZE + '\n' +
 		'learning_rate: ' + learning_rate + '\n' +
-		'batch_size: ' + BATCH_SIZE + '\n'
+		'BATCH_SIZE: ' + BATCH_SIZE + '\n' +
+		'HIDDEN_UNITS: ' + HIDDEN_UNITS + '\n' +
+		'FIXED_LEARNING_RATE: ' + FIXED_LEARNING_RATE + '\n' +
+		'AUTO_TUNE_LEARNING_RATE: ' + AUTO_TUNE_LEARNING_RATE + '\n' +
+		'GIBBS_SAMPLING_STEPS: ' + GIBBS_SAMPLING_STEPS + '\n'
 	);
 }
 
 function TrainSingleBatch(update_all) {
 	++batches;
 	console.log('BATCH ' + batches);
-	learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, 1,
+	learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, GIBBS_SAMPLING_STEPS,
 		AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE);
 	console.log('train done');
 	
