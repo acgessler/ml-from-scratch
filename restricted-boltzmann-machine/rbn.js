@@ -171,7 +171,7 @@ models.RBN.prototype.reconstructionErrorForExample = function(example) {
 	// Perform one step back and forth of conditional sampling.
 	this.sampleHiddenFromVisibleUnits_();
 	// Keep expected value (probability) since it plays well with Cross-Entropy loss.
-	this.sampleVisibleFromHiddenUnits_(true);
+	this.sampleVisibleFromHiddenUnits_(/* use_expected_value */ true);
 
 	return util.CrossEntropy(
 		this.old_visible_activations.subarray(0, this.num_visible_units),
@@ -185,7 +185,8 @@ models.RBN.prototype.reconstructionErrorForExample = function(example) {
 models.RBN.prototype.classifyExample = function(example) {
 	this.setVisibleActivationFromExample_(example);
 	// Perform one step back and forth of conditional sampling.
-	this.sampleHiddenFromVisibleUnits_();
+	// Use expected value to reduce sampling noise.
+	this.sampleHiddenFromVisibleUnits_(/* use_expected_value */ true);
 	// Keep expected value in class labels. We want to take the class with the highest
 	// probability, not a sampled category.
 	this.sampleVisibleFromHiddenUnits_(/* use_expected_value */ true);
