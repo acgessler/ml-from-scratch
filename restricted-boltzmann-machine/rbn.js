@@ -6,7 +6,7 @@ var models = models || {};
 // Learns a joint probability distribution of `num_visible_units` binary-valued inputs
 // using `num_hidden_units` binary units as memory. When applied to image data sets,
 // visible units (with one exception explained below) refer to image pixels being
-// "on" or "off" (to handle grayscale).
+// "on" or "off".
 //
 // A RBN is a special case of a Markov Random Field (MRF) where the visible and hidden
 // inputs are fully connected amongst each other but not amongst themselves. This
