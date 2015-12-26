@@ -118,6 +118,7 @@ models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size
 		this.applyWeightUpdates_(learning_rate / batch_size);
 		// TODO: update learning_rate? (Adagrad)
 	}
+	this.assertFiniteness_();
 };
 
 
@@ -382,6 +383,7 @@ models.RBN.prototype.sampleHiddenFromVisibleUnits_ = function(use_expected_value
 }
 
 
+
 // Sample an activation of the visible units from the current hidden activation.
 // use_expected_value: Uses the expected value of each activation instead of a
 //    binary activation.
@@ -390,11 +392,8 @@ models.RBN.prototype.sampleVisibleFromHiddenUnits_ = function(use_expected_value
 	// Use regular logistic activation for the binary units (same as for
 	// sampleHiddenFromVisibleUnits_). 
 	for (var vi = 0; vi < this.num_visible_units; ++vi) {
-		console.assert(isFinite(this.visible_bias[vi], 'visible_bias is non-finite: ', vi));
 		var activation_logit = this.visible_bias[vi];
 		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-			console.assert(isFinite(this.weights[vi][hi]), 'weight is non-finite: ', vi, ' ', hi);
-			console.assert(isFinite(this.hidden_activations[hi]), 'hidden unit is non-finite: ', hi); 
 			activation_logit += this.weights[vi][hi] * this.hidden_activations[hi];
 		}
 		var activation_probability = util.Sigmoid(activation_logit);
@@ -420,6 +419,25 @@ models.RBN.prototype.sampleVisibleFromHiddenUnits_ = function(use_expected_value
 	}
 	if (!use_expected_value) {
 		util.SampleCategoricalInPlace(this.class_activations);
+	}
+};
+
+
+// Check weights, biases and activations for finiteness. Since hidden and visible
+// layers are fully connected with each other, any NaN or Infinity would immediately
+// propagate and ruin the net. 
+//
+models.RBN.prototype.assertFiniteness_ = function() {
+	for (var vi = 0; vi < this.num_visible_units; ++vi) {
+		console.assert(isFinite(this.visible_bias[vi], 'visible bias is non-finite: ', vi));
+		console.assert(isFinite(this.visible_activations[vi]), 'visible unit is non-finite: ', vi); 
+		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
+			console.assert(isFinite(this.weights[vi][hi]), 'weight is non-finite: ', vi, ' ', hi);
+			console.assert(isFinite(this.hidden_activations[hi]), 'hidden unit is non-finite: ', hi); 
+		}
+	}
+	for (var hi = 0; hi < this.num_hidden_units; ++hi) {
+		console.assert(isFinite(this.hidden_bias[hi], 'hidden bias is non-finite: ', hi));
 	}
 };
 
