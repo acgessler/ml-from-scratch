@@ -4,6 +4,7 @@ var rbn;
 var train_examples;
 var test_examples;
 var train_running = false;
+var full_eval_requested = false;
 var batches = 0;
 
 var HIDDEN_UNITS = 1000;
@@ -171,8 +172,12 @@ function TrainStart() {
 		if (!train_running) {
 			return;
 		}
+		if (full_eval_requested) {
+			EvalFull();
+			full_eval_requested = false;
+		}
 		TrainSingleBatch();
-		setTimeout(continuation, 20);
+		setTimeout(continuation, 50);
 	};
 	continuation();
 }
@@ -196,8 +201,8 @@ function EvalApproximate() {
 }
 
 function EvalFull() {
-	full_eval_classification_error = rbn.evalClassificationError(test_examples_, /* no sampling */ -1);
-	full_eval_reconstruction_error = rbn.evalReconstructionError(test_examples_, /* no sampling */ -1);
+	full_eval_classification_error = rbn.evalClassificationError(test_examples, /* no sampling */ -1);
+	full_eval_reconstruction_error = rbn.evalReconstructionError(test_examples, /* no sampling */ -1);
 	UpdateStats();
 }
 
@@ -241,5 +246,12 @@ $(document).ready(function(){
     $('#train_batch').click(function() {TrainSingleBatch(true); });
     $('#train_start').click(TrainStart);
     $('#train_stop').click(TrainStop);
-    $('#full_eval_test').click(EvalFull);
+    $('#full_eval_test').click(function() {
+    	if (train_running) {
+    		full_eval_requested = true;
+    	}
+    	else {
+    		EvalFull();
+    	}
+    });
 });
