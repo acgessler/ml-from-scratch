@@ -87,7 +87,9 @@ models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
 // num_batches: Number of training batches.
 // batch_size: Number of (randomly chosen) examples per batch, defaults to 1.
 // gibbs_sampling_steps: Markov Chain length for Gibbs sampling (CD-k), defaults to 1.
-// learning_rate: Multiplier for weight updates, defaults to 0.001.
+// learning_rate: Multiplier for weight updates, defaults to 0.001. If set to -1,
+//   learning rate is picked based on the weight histogram and bootstrap heuristics.
+// Returns: effective learning rate.
 //
 models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size,
 	gibbs_sampling_steps,
@@ -95,7 +97,9 @@ models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size
 
 	// Config defaults.
 	gibbs_sampling_steps = gibbs_sampling_steps || 1;
-	learning_rate = learning_rate || 0.001;
+	learning_rate = learning_rate == -1
+		? this.smoothLearningRate_(this.pickLearningRateFromWeightsHistogram_())
+		: (learning_rate || 0.001);
 	batch_size = batch_size || 1;
 
 	// The first time this runs, initialize visible biases from training data.
@@ -119,6 +123,7 @@ models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size
 		// TODO: update learning_rate? (Adagrad)
 	}
 	this.assertFiniteness_();
+	return learning_rate;
 };
 
 
@@ -205,7 +210,7 @@ models.RBN.prototype.classifyExample = function(example) {
 
 // Reconstruct visible unit state for the given example.
 // labeled_example: Labeled input example. However, an unlabeled example is also accepted.
-// Returns an UInt8Array containing binary state for each visible unit (not including
+// Returns an Uint8Array containing binary state for each visible unit (not including
 // units pertaining to class labels). This represents an unbiased sample of the
 // distribution learnt by the RBN, conditioned on the input example.
 //
@@ -216,9 +221,9 @@ models.RBN.prototype.reconstructVisibleUnitsForExample = function(labeled_or_unl
 	else {
 		this.setVisibleActivationFromExample_(labeled_or_unlabeled_example);
 	}
-	this.sampleHiddenFromVisibleUnits_();
-	this.sampleVisibleFromHiddenUnits_();
-	return new Uint8Array(this.visible_activations.slice(0, this.num_visible_units));
+	this.sampleHiddenFromVisibleUnits_(false);
+	this.sampleVisibleFromHiddenUnits_(true);
+	return new Float32Array(this.visible_activations.slice(0, this.num_visible_units));
 };
 
 
@@ -232,6 +237,46 @@ models.RBN.prototype.getFilterForHiddenUnit = function(hidden_unit_index) {
 			this.hidden_bias[hidden_unit_index]);
 	}
 	return filter;
+};
+
+
+// As recommended in [Hinton 2010], picks a learning rate based on the histogram
+// of the weights.
+//
+models.RBN.prototype.pickLearningRateFromWeightsHistogram_ = function() {
+	var SAMPLE_COUNT = 1000;
+
+	var samples = new Array(SAMPLE_COUNT);
+	for (var i = 0; i < SAMPLE_COUNT; ++i) {
+		var row = util.RandomElement(this.weights);
+		var sampled_weight = util.RandomElement(row);
+		samples.push(Math.abs(sampled_weight));
+	}
+	samples.sort();
+	var median = samples[SAMPLE_COUNT / 2];
+	var new_learning_rate = median * 0.01;
+	return new_learning_rate;
+};
+
+
+// Takes a given learning rate and smoothes it against the previously used learning
+// rate. In addition, for the first training step it bootstraps using a very high
+// "previous" learning rate.
+// Returns smoothed and clamped learning rate.
+//
+models.RBN.prototype.smoothLearningRate_ = function(new_learning_rate) {
+	var MAX_LEARNING_RATE = 0.1;
+	var MIN_LEARNING_RATE = 0.00001;
+	var DECAY_FACTOR = 0.0001;
+
+	if (!this.started_training) {
+		this.old_learning_rate = MAX_LEARNING_RATE;
+		return MAX_LEARNING_RATE;
+	}
+	var smoothed_learning_rate = this.old_learning_rate * (1.0 - DECAY_FACTOR) +
+		new_learning_rate * DECAY_FACTOR;
+	this.old_learning_rate = smoothed_learning_rate;
+	return Math.min(MAX_LEARNING_RATE, Math.max(MIN_LEARNING_RATE, smoothed_learning_rate));
 };
 
 
@@ -305,7 +350,7 @@ models.RBN.prototype.updateGradientsFromExample_ = function(training_example, gi
 	// marginalizing over the visible distribution.
 	for (var gibbs_step = gibbs_sampling_steps - 1; gibbs_step >= 0; --gibbs_step) {
 		is_last = gibbs_step == 0;
-		this.sampleVisibleFromHiddenUnits_(is_last);
+		this.sampleVisibleFromHiddenUnits_(false);
 		this.sampleHiddenFromVisibleUnits_(is_last);
 	}
 	this.addPhaseToGradients_(-1.0);

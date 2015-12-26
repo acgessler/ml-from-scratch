@@ -5,7 +5,11 @@ var train_examples;
 var test_examples;
 var train_running = false;
 var batches = 0;
-var learning_rate = 0.01;
+
+var FIXED_LEARNING_RATE = 0.01;
+var AUTO_TUNE_LEARNING_RATE = true;
+var learning_rate = -1;
+
 var approx_eval_classification_error = 1.0;
 var approx_eval_reconstruction_error = 100000;
 // Evaluation error on training set is for diagnosing overfitting.
@@ -27,7 +31,7 @@ var EVAL_SIZE = 150;
 
 function Init() {
 	var pixel_count = mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT;
-	rbn = new models.RBN(pixel_count, Math.floor(pixel_count * 0.6), 10);
+	rbn = new models.RBN(pixel_count, Math.floor(pixel_count * 0.2), 10);
 
 	UpdateSampleTrainingExamples();
 	UpdateSampleTestExamples();
@@ -86,15 +90,15 @@ function UpdateReconstructionExamples() {
 			// Create an example that is all zero, but sets the label index.
 			var noise_in = new Uint8Array(
 				mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT);
-			for (var j = 0; j < noise_in.length; ++j) {
-				noise_in[j] = 256.0 * Math.random();
-			}
+			//for (var j = 0; j < noise_in.length; ++j) {
+			//	noise_in[j] = 127 + Math.random() * 5.0;
+			//}
 			var example = new io.LabeledImageExample(digit, noise_in,
 				mnist_reader.MNIST_WIDTH,
 				mnist_reader.MNIST_HEIGHT);
 			var pixels = rbn.reconstructVisibleUnitsForExample(example);
 			for (var j = 0; j < pixels.length; ++j) {
-				pixels[j] *= 256.0;
+				pixels[j] = pixels[j] * 255.0;
 			}
 			example.features = pixels; // TODO(acgessler): cleanup.
 			var img = new Image();
@@ -126,7 +130,8 @@ function UpdateStats() {
 function TrainSingleBatch(update_all) {
 	++batches;
 	console.log('BATCH ' + batches);
-	rbn.train(train_examples, 1, BATCH_SIZE, 1, learning_rate);
+	learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, 1,
+		AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE);
 	console.log('train done');
 	
 	if (update_all || batches % UPDATE_SAMPLES_FREQUENCY == 0) {
