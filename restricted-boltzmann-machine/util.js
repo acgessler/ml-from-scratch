@@ -20,7 +20,7 @@ util.CrossEntropy = function(p, q) {
 	for (var i = 0; i < p.length; ++i) {
 		acc += p[i] * Math.log(q[i]);
 	}
-	return acc;
+	return -acc;
 };
 
 util.RandomInt = function(lower_inclusive, upper_exclusive) {
