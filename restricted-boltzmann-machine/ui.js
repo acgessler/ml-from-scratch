@@ -38,7 +38,12 @@ var EVAL_SIZE = 150;
 function Init() {
 	var pixel_count = mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT;
 	rbn = new models.RBN(pixel_count, HIDDEN_UNITS, 10);
+	UpdateAll();
+}
 
+function UpdateAll() {
+	EvalApproximate();
+	UpdateEvalChart();
 	UpdateSampleTrainingExamples();
 	UpdateSampleTestExamples();
 	UpdateFilters();
@@ -285,8 +290,25 @@ function Save() {
 	window.focus();
 }
 
-function Load() {
-	// TODO
+function Load(evt) {
+	var files = evt.target.files;
+	if (!files || !files[0]) {
+		return;
+	}
+	var reader = new FileReader();
+	reader.onload = function(e) {
+		var content = e.target.result;
+		var state = JSON.parse(content);
+		
+		if (!rbn.deserialize(state.model)) {
+			alert('Failed to load model, see console for details');
+			return;
+		}
+		eval_history = state.eval_history;
+		batches = state.batches;
+		UpdateAll();
+	};
+	reader.readAsText(files[0]);
 }
 
 $(document).ready(function(){
@@ -309,6 +331,6 @@ $(document).ready(function(){
     		EvalFull();
     	}
     });
-    $('#load').click(Load);
+    $('#load').change(Load);
     $('#save').click(Save);
 });

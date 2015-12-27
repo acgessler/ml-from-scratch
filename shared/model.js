@@ -77,7 +77,7 @@ models.Model.prototype.deserialize = function(state) {
 			}
 		}
 		else {
-			src.set(dest);
+			dest.set(src);
 		}
 		return true;
 	};
@@ -88,7 +88,7 @@ models.Model.prototype.deserialize = function(state) {
 		return false;
 	}
 	// Update hyper parameters. By default this will reject any changes. 
-	for (var k of state.hyperparameters) {
+	for (var k in state.hyperparameters) {
 		if (!this.isCompatibleHyperParameter_(k, state.hyperparameters[k])) {
 			console.log('Hyper parameter is incompatible: ' + k +
 				', my value '  + this.hyperparameters[k] +
@@ -99,7 +99,7 @@ models.Model.prototype.deserialize = function(state) {
 	}
 	// Update existing parameter storage in-place. Ignore any parameters that
 	// we do not recognize.
-	for (var k of state.parameters) {
+	for (var k in state.parameters) {
 		if (!this.parameters[k]) {
 			console.log('Ignoring unknown parameter: ' + k);
 			continue;
