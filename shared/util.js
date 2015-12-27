@@ -105,3 +105,18 @@ util.SampleNormal = /* function(mean, variance) */ (function() {
 		return z0 * variance + mean;
 	};
 })();
+
+util.IsTypedArray = function(arr) {
+	return typeof arr.BYTES_PER_ELEMENT != 'undefined';
+};
+
+util.IsArrayOrTypedArray = function(arr) {
+	return Array.isArray(arr) || util.IsTypedArray(arr);
+};
+
+util.TypedArrayReplacer = function(key, value) {
+	if (!util.IsTypedArray(value)) {
+		return value;
+	}
+	return Array.from(value);
+};

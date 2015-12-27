@@ -31,7 +31,6 @@ var models = models || {};
 //  [Hinton 2010] "A Practical Guide to Training Restricted Boltzmann Machines"
 //    Geoffrey Hinton, 2010 (https://www.cs.toronto.edu/~hinton/absps/guideTR.pdf)
 models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
-	//models.Model.call(this, 'Restricted Boltzmann Machine');
 	this.num_hidden_units = num_hidden_units;
 	this.num_visible_units = num_visible_units;
 	this.num_label_classes = num_label_classes;
@@ -81,7 +80,20 @@ models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
 	// Used by evalReconstructionError().
 	this.old_visible_activations = new Float32Array(this.num_visible_units_and_labels);
 	this.started_training = false;
+
+	models.Model.call(this, 'RBN', /* parameters */ {
+		'weights': this.weights,
+		'visible_bias': this.visible_bias,
+		'hidden_bias': this.hidden_bias
+	}, /* hyper parameters */ {
+		'num_hidden_units' : this.num_hidden_units,
+		'num_visible_units' : this.num_visible_units,
+		'num_label_classes' : this.num_label_classes,
+	});
 };
+
+
+models.RBN.prototype = Object.create(models.Model.prototype);
 
 
 // Train on the given labeled training set.

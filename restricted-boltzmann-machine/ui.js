@@ -274,6 +274,21 @@ function UpdateFilters() {
 	}
 }
 
+function Save() {
+	var state = {
+		'model' : rbn.serialize(),
+		'eval_history' : eval_history,
+		'batches' : batches
+	};
+	var url = 'data:text/json;charset=utf8,' + encodeURIComponent(JSON.stringify(state, util.TypedArrayReplacer, '\t'));
+	window.open(url, '_blank');
+	window.focus();
+}
+
+function Load() {
+	// TODO
+}
+
 $(document).ready(function(){
     mnist_reader.loadTrainAndTestSetsViaXhr('../data/mnist/', function(train_examples_, test_examples_) {
     	train_examples = train_examples_;
@@ -294,4 +309,6 @@ $(document).ready(function(){
     		EvalFull();
     	}
     });
+    $('#load').click(Load);
+    $('#save').click(Save);
 });
