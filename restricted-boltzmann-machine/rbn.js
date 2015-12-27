@@ -31,6 +31,7 @@ var models = models || {};
 //  [Hinton 2010] "A Practical Guide to Training Restricted Boltzmann Machines"
 //    Geoffrey Hinton, 2010 (https://www.cs.toronto.edu/~hinton/absps/guideTR.pdf)
 models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
+	//models.Model.call(this, 'Restricted Boltzmann Machine');
 	this.num_hidden_units = num_hidden_units;
 	this.num_visible_units = num_visible_units;
 	this.num_label_classes = num_label_classes;
@@ -341,7 +342,6 @@ models.RBN.prototype.updateGradientsFromExample_ = function(training_example, gi
 	// The pixels of the training example image represent an unbiased sample of the
 	// visible distribution we wish to model. 
 	this.setVisibleActivationFromLabeledExample_(training_example);
-	
 	// Sample the hidden units. This is an unbiased sample of the hidden distribution
 	// conditioned on the visible distribution.
 	this.sampleHiddenFromVisibleUnits_();
@@ -350,7 +350,9 @@ models.RBN.prototype.updateGradientsFromExample_ = function(training_example, gi
 	// marginalizing over the visible distribution.
 	for (var gibbs_step = gibbs_sampling_steps - 1; gibbs_step >= 0; --gibbs_step) {
 		is_last = gibbs_step == 0;
-		this.sampleVisibleFromHiddenUnits_(false);
+		// Empirically, always sampling the visible units vs. taking the expectation
+		// performs much better at discriminating digits @ MNIST (~4.8% vs 6% error)
+		this.sampleVisibleFromHiddenUnits_();
 		this.sampleHiddenFromVisibleUnits_(is_last);
 	}
 	this.addPhaseToGradients_(-1.0);
