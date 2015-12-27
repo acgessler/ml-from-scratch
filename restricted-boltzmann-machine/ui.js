@@ -285,7 +285,10 @@ function Save() {
 		'eval_history' : eval_history,
 		'batches' : batches
 	};
-	var url = 'data:text/json;charset=utf8,' + encodeURIComponent(JSON.stringify(state, util.TypedArrayReplacer, '\t'));
+	var json_string = JSON.stringify(state, util.TypedArrayReplacer, '\t');
+	// Truncate all numbers at 9 digits after the comma. This makes the models smaller.
+	json_string = json_string.replace(/(\.\d{9})\d*/g, '$1');
+	var url = 'data:text/json;charset=utf8,' + encodeURIComponent(json_string);
 	window.open(url, '_blank');
 	window.focus();
 }
