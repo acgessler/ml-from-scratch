@@ -36,53 +36,53 @@ dist.Worker.prototype.startWorker = function() {
 	var self = this;
 
 	onmessage = function (e) {
-  		var message = e.data;
-  		// Register any returned parameter loans.
-  		if (message['parameters']) {
-  			self.parameters = message['parameters'];
-  		}
-  		if (message['parameters_update']) {
-  			self.parameters_update = message['parameters_update'];
-  		}
-  		if (self.call_when_parameter_loan_returned && self.parameters_update && self.parameters) {
-  			self.assertFiniteness_();
-  			self.call_when_parameter_loan_returned();
-  			self.call_when_parameter_loan_returned = null;
-  		}
+		var message = e.data;
+		// Register any returned parameter loans.
+		if (message['parameters']) {
+			self.parameters = message['parameters'];
+		}
+		if (message['parameters_update']) {
+			self.parameters_update = message['parameters_update'];
+		}
+		if (self.call_when_parameter_loan_returned && self.parameters_update && self.parameters) {
+			self.assertFiniteness_();
+			self.call_when_parameter_loan_returned();
+			self.call_when_parameter_loan_returned = null;
+		}
 
-  		if (message['sync']) {
-  			var response = {
-  				'parameters' : self.parameters
-  			};
-  			self.parameters = null;
-  			postMessage(response, util.CollectTransferables(response));
-  		}
-  		if (message['train']) {
-  			var train = message['train'];
-  			var examples = train['examples'].map(io.Example.deserialize);
-  			// Wrap the training loop into a continuation to allow the worker to receive and
-  			// process messages between batches. Each iteration calls train() with the
-  			// original parameters but a batch count of 1.
-  			var batch_size = train['batch_size'];
-  			for (var i = 0; i < train['num_batches']; ++i) {
-  				(function(batch_examples) {
-	  				self.train_done = self.train_done.then(function() {
-	  					return new Promise(function(resolve) {
-	  						var train_args = [batch_examples, /* num_batches */ 1, batch_size, /* noshuffle */ true];
-	  						self.train.apply(self, train_args.concat(train['extra_args']));
-	  						// Send our parameters to the master and continue once we get them back.
-	  						// The master may or may not decide to update our parameters. It may also
-	  						// decide whether to use our parameter update wholly, in parts or not at
-	  						// all.
+		if (message['sync']) {
+			var response = {
+				'parameters' : self.parameters
+			};
+			self.parameters = null;
+			postMessage(response, util.CollectTransferables(response));
+		}
+		if (message['train']) {
+			var train = message['train'];
+			var examples = train['examples'].map(io.Example.deserialize);
+			// Wrap the training loop into a continuation to allow the worker to receive and
+			// process messages between batches. Each iteration calls train() with the
+			// original parameters but a batch count of 1.
+			var batch_size = train['batch_size'];
+			for (var i = 0; i < train['num_batches']; ++i) {
+				(function(batch_examples) {
+					self.train_done = self.train_done.then(function() {
+						return new Promise(function(resolve) {
+							var train_args = [batch_examples, /* num_batches */ 1, batch_size, /* noshuffle */ true];
+							self.train.apply(self, train_args.concat(train['extra_args']));
+							// Send our parameters to the master and continue once we get them back.
+							// The master may or may not decide to update our parameters. It may also
+							// decide whether to use our parameter update wholly, in parts or not at
+							// all.
 							postMessage(self.loan_message, util.CollectTransferables(self.loan_message));
 							self.parameters = null;
 							self.parameters_update = null;
-	  						self.call_when_parameter_loan_returned = resolve;
-	  					});
-	  				});
-  				})(examples.slice(i * batch_size, (i + 1) * batch_size));
-  			}
-  		}
+							self.call_when_parameter_loan_returned = resolve;
+						});
+					});
+				})(examples.slice(i * batch_size, (i + 1) * batch_size));
+			}
+		}
 	};
 };
 

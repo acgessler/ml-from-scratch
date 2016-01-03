@@ -123,20 +123,20 @@ dist.Master.prototype.trainDistributed = function(examples,
 		// For the first batch, have the worker transfer us their parameters so we can fill
 		// in the current state of the model.
 		worker.postMessage({
-	    	'sync' : true
-	    });
+			'sync' : true
+		});
 		worker.postMessage({
-	    	'train' : {
-	    		'examples' : worker_examples,
-	    		'num_batches' : num_batches,
-	    		'batch_size' : batch_size,
-	    		'extra_args' : Array.prototype.slice.call(arguments, 4)
-	    	}
-	    });
+			'train' : {
+				'examples' : worker_examples,
+				'num_batches' : num_batches,
+				'batch_size' : batch_size,
+				'extra_args' : Array.prototype.slice.call(arguments, 4)
+			}
+		});
 
 		var last_time_worker_parameters_updated = -1;
-	    return new Promise(function(resolve, reject) {
-	    	var remaining_batches = num_batches;
+		return new Promise(function(resolve, reject) {
+			var remaining_batches = num_batches;
 			worker.onmessage =  function(e) {
 				var message = e.data;
 				if (!message) {return;}
@@ -155,23 +155,23 @@ dist.Master.prototype.trainDistributed = function(examples,
 					--remaining_batches;
 				}
 				if (message['parameters']) {
-		    		self.worker_parameters[i] = message['parameters'];
-		    	}
-
-		    	// Only update worker parameters from master if at least half of the other
-		    	// workers contributed updates since the last time we sync'd parameters.
-		    	// Each worker will still apply their own gradient updates.
-		    	if (last_time_worker_parameters_updated == -1 ||
-		    		total_updates_received - last_time_worker_parameters_updated > self.num_workers / 2) {
-		    		
-		    		self.updateLoanedWorkerParameters_(i);
-		    		last_time_worker_parameters_updated = total_updates_received;
+					self.worker_parameters[i] = message['parameters'];
 				}
-		    	self.returnLoanedParametersToWorker_(i);
-		    	if (remaining_batches == 0) {
-		    		resolve();
-		    	}
-		    };	 
+
+				// Only update worker parameters from master if at least half of the other
+				// workers contributed updates since the last time we sync'd parameters.
+				// Each worker will still apply their own gradient updates.
+				if (last_time_worker_parameters_updated == -1 ||
+					total_updates_received - last_time_worker_parameters_updated > self.num_workers / 2) {
+					
+					self.updateLoanedWorkerParameters_(i);
+					last_time_worker_parameters_updated = total_updates_received;
+				}
+				self.returnLoanedParametersToWorker_(i);
+				if (remaining_batches == 0) {
+					resolve();
+				}
+			};	 
 		});
 	}));
 };
@@ -193,24 +193,24 @@ dist.Master.prototype.trainDistributedWithExplicitSynchronization = function(exa
 	for (var batch = 0; batch < num_batches; ++batch) {
 		var current_batch_done = Promise.all(this.workers.map(function(worker) {
 			var worker_examples = self.collectExamples_(examples, batch_size, noshuffle)
-    			.map(function(example) {
-    				return example.serialize();
-    			});
-    		// For the first batch, have the worker transfer us their parameters
-    		// so we can send back the current state of the model.
-    		if (batch == 0) {	
-    			worker.postMessage({
-    				'sync' : true
-    			});
-    		}
+				.map(function(example) {
+					return example.serialize();
+				});
+			// For the first batch, have the worker transfer us their parameters
+			// so we can send back the current state of the model.
+			if (batch == 0) {	
+				worker.postMessage({
+					'sync' : true
+				});
+			}
 			worker.postMessage({
-		    	'train' : {
-		    		'examples' : worker_examples,
-		    		'num_batches' : 1,
-		    		'batch_size' : batch_size,
-		    		'extra_args' : Array.prototype.slice.call(arguments, 4)
-	    		}
-		    });
+				'train' : {
+					'examples' : worker_examples,
+					'num_batches' : 1,
+					'batch_size' : batch_size,
+					'extra_args' : Array.prototype.slice.call(arguments, 4)
+				}
+			});
 			return new Promise(function(resolve, reject) {
 				worker.onmessage =  function(e) {
 					var message = e.data;
@@ -221,21 +221,21 @@ dist.Master.prototype.trainDistributedWithExplicitSynchronization = function(exa
 							message['parameters_update']
 						);
 					}
-		    		self.worker_parameters[i] = message['parameters'];
-		    		self.worker_parameters_update[i] = message['parameters_update'];
+					self.worker_parameters[i] = message['parameters'];
+					self.worker_parameters_update[i] = message['parameters_update'];
 
-		    		if (message['parameters_update']) {
-		    			resolve();
-		    		}
-			    };	 
+					if (message['parameters_update']) {
+						resolve();
+					}
+				};	 
 			});
 		}));
 		all_batches_done = all_batches_done.then(function() {		
 			return current_batch_done.then(function() {
 				for (var i = 0; i < this.num_workers; ++i) {
 					self.updateLoanedWorkerParameters_(i);
-		    		self.returnLoanedParametersToWorker_(i);
-		    	}
+					self.returnLoanedParametersToWorker_(i);
+				}
 			});
 		});
 	}
