@@ -18,25 +18,16 @@ io.Label.prototype.getClassLabel = function() {
 
 
 // Given an `ExampleType` (which must inherit from io.Example), produces a new
-// class type that also provides a label. All methods of io.Label are available
-// on the created type. The constructor first processes io.Label parameters and
+// class type that also provides a label. All methods of `io.Label` are available
+// on the created type. The constructor first processes `io.Label` parameters and
 // forwards the remainder to the `ExampleType` constructor.
 //
-io.MakeLabeledExampleType = function(ExampleType) {
-	var TransformedExampleType = function(class_label /* ,arguments */) {
-		io.Label.call(this, class_label);
-		ExampleType.apply(this, Array.prototype.slice.call(arguments, 1));
-	};
-	for (var k in ExampleType.prototype) {
-		TransformedExampleType.prototype[k] = ExampleType.prototype[k];
-	}
-	for (var k in io.Label.prototype) {
-		TransformedExampleType.prototype[k] = io.Label.prototype[k];
-	}
-	TransformedExampleType.prototype.constructor = TransformedExampleType;
-	return TransformedExampleType;
+io.DeclareLabeledExampleType = function(name, ExampleType) {
+	var LabelType = util.Mixin(ExampleType, io.Label, 1);
+	LabelType.prototype.typename = name;
+	util.Declare(name, LabelType);
 };
 
 // Labeled example types for all example types.
-io.LabeledExample = io.MakeLabeledExampleType(io.Example);
-io.LabeledImageExample = io.MakeLabeledExampleType(io.ImageExample);
+io.DeclareLabeledExampleType('io.LabeledExample', io.Example);
+io.DeclareLabeledExampleType('io.LabeledImageExample', io.ImageExample);

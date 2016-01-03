@@ -7,6 +7,8 @@
         <script type="text/javascript" src="../shared/image_example.js"></script>
         <script type="text/javascript" src="../shared/label.js"></script>
         <script type="text/javascript" src="../shared/model.js"></script>
+        <script type="text/javascript" src="../distributed-training/master.js"></script>
+        <script type="text/javascript" src="../distributed-training/worker.js"></script>
         <script type="text/javascript" src="../shared/mnist_reader.js"></script>
         <script type="text/javascript" src="rbn.js"></script>
         <script type="text/javascript" src="ui.js"></script>
@@ -83,7 +85,10 @@
 	<h2>Training</h2>
 	<button id="train_batch">Train Single Batch</button>
 	<button id="train_start">Start Training</button>
-	<button id="train_stop">Stop Training</button>
+	<button id="train_stop">Stop Training</button><br>
+	<br><input checked type="radio" name="trainmode" id="train_normal">Normal
+	<br><input type="radio" name="trainmode" id="train_dist_bounded">Distributed with bounded consistency (using Web Workers)
+	<br><input type="radio" name="trainmode" id="train_dist_strict">Distributed with explicit synchronization (using Web Workers)
 	<pre id="training_log"></pre>
 </div>
 

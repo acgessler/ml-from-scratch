@@ -15,6 +15,8 @@ io.ImageExample = function(pixels, width, height, components) {
 
 io.ImageExample.prototype = Object.create(io.Example.prototype);
 
+io.ImageExample.prototype.typename = "io.ImageExample";
+
 io.ImageExample.prototype.getPixel = function(x, y, component) {
 	component = component || 0;
 	return this.features[(y * this.width + x) * this.components + component];

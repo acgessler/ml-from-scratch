@@ -9,6 +9,47 @@ io.Example = function(features) {
 	this.features = features;
 };
 
+io.Example.prototype.typename = "io.Example";
+
+
+// Serialize into a JSON-ish form.
+// Saves all simple so most sub classes should not need to change it.
+//
+io.Example.prototype.serialize = function() {
+	var data = {};
+	for (var k in this) {
+		if (typeof this[k] !== 'function') {
+			data[k] = this[k];
+		}	
+	}
+	return data;
+};
+
+
+// Serialize from a JSON-ish form (non-static, presumes class type is known).
+// Restores all simple fields so most sub classes should not need to change it.
+//
+io.Example.prototype.deserializeFrom = function(data) {
+	for (var k in data) {
+		this[k] = data[k];
+	}
+};
+
+
+
+// Deserialize from a JSON-ish form.
+// Static method, returns the appropriate class type. Restores all simple fields
+//
+io.Example.deserialize = function(data) {
+	var ExampleType = eval(data.typename);
+	if (!ExampleType) {
+		return null;
+	}
+	var example = Object.create(ExampleType.prototype);
+	example.deserializeFrom(data);
+	return example;
+};
+
 
 // Extracts the continuous (raw) features of the example.
 //

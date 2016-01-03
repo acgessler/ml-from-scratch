@@ -55,11 +55,7 @@ models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
 		function() {
 			return 0.0;
 		});
-
-	// Field below store state during training. To avoid repeated allocations, we
-	// pre-create them and hold them in the RBN instance (The disadvantage is that
-	// it makes the data flow during training a bit less obvious).
-
+	
 	// Current activation for visible and hidden units. Activations are binary (0
 	// or 1). However, to reduce sampling noise we occasionally use the expected
 	// value of the activation, which is a floating-point value between 0 and 1.
@@ -76,20 +72,29 @@ models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
 		this.num_visible_units_and_labels);
 	this.hidden_bias_gradient = this.create1DArray_(Float32Array,
 		this.num_hidden_units);
-
+	
 	// Used by evalReconstructionError().
 	this.old_visible_activations = new Float32Array(this.num_visible_units_and_labels);
 	this.started_training = false;
 
-	models.Model.call(this, 'RBN', /* parameters */ {
-		'weights': this.weights,
-		'visible_bias': this.visible_bias,
-		'hidden_bias': this.hidden_bias
-	}, /* hyper parameters */ {
+	// Make parameters and (definining) hyper parameters known to the parent
+	// to enable safe model serialization / deserialization.
+	var hyperparameters = {
 		'num_hidden_units' : this.num_hidden_units,
 		'num_visible_units' : this.num_visible_units,
 		'num_label_classes' : this.num_label_classes,
-	});
+	};
+	var parameters =  {
+		'weights': this.weights,
+		'visible_bias': this.visible_bias,
+		'hidden_bias': this.hidden_bias
+	};
+	var parameters_update =  {
+		'weights': this.weights_gradient,
+		'visible_bias': this.visible_bias_gradient,
+		'hidden_bias': this.hidden_bias_gradient
+	};
+	models.Model.call(this, 'RBN', parameters, parameters_update, hyperparameters);
 };
 
 
@@ -99,21 +104,24 @@ models.RBN.prototype = Object.create(models.Model.prototype);
 // Train on the given labeled training set.
 // num_batches: Number of training batches.
 // batch_size: Number of (randomly chosen) examples per batch, defaults to 1.
+// noshuffle: If true, drawn sequentially instead of randomly. Defaults to false.
 // gibbs_sampling_steps: Markov Chain length for Gibbs sampling (CD-k), defaults to 1.
 // learning_rate: Multiplier for weight updates, defaults to 0.001. If set to -1,
 //   learning rate is picked based on the weight histogram and bootstrap heuristics.
-// Returns: effective learning rate.
+// Returns: Promise that is called with the effective learning rate.
 //
-models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size,
+models.RBN.prototype.train = function(labeled_examples, num_batches, batch_size, noshuffle,
+	/* RBN-specific parameters */
 	gibbs_sampling_steps,
 	learning_rate) {
 
 	// Config defaults.
+	noshuffle = noshuffle || false;
+	batch_size = batch_size || 1;
 	gibbs_sampling_steps = gibbs_sampling_steps || 1;
 	learning_rate = learning_rate == -1
 		? this.smoothLearningRate_(this.pickLearningRateFromWeightsHistogram_())
 		: (learning_rate || 0.001);
-	batch_size = batch_size || 1;
 
 	// The first time this runs, initialize visible biases from training data.
 	if (!this.started_training) {
@@ -125,15 +133,12 @@ models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size
 		this.clearGradients_();
 		// Run `batch_size` training examples.
 		// Each example adds to the positive and the negative gradients.
-		for (var n = 0; n < batch_size; ++n) {
-			// Get a random training example from `labeled_images`.
-			var training_example = util.RandomElement(labeled_examples);
+		this.collectExamples_(labeled_examples, batch_size, noshuffle).forEach(function(training_example) {
 			this.updateGradientsFromExample_(training_example, gibbs_sampling_steps);	
-		}
+		}, this);
 		// Tune weights using learning_rate * (positive_gradient - negative_gradient) / batch_size.
 		// This is effectively gradient-descent back-propagation.
-		this.applyWeightUpdates_(learning_rate / batch_size);
-		// TODO: update learning_rate? (Adagrad)
+		this.applyParameterUpdates_(learning_rate / batch_size);
 	}
 	this.assertFiniteness_();
 	return learning_rate;
@@ -146,17 +151,16 @@ models.RBN.prototype.train = function(labeled_examples,  num_batches, batch_size
 //   examples are classified.
 //
 models.RBN.prototype.evalClassificationError = function(labeled_examples, num_samples) {
-	var all = num_samples == -1;
-	num_samples = all ? labeled_examples.length : (num_samples || labeled_examples.length);
+	var noshuffle = num_samples == -1;
+	num_samples = noshuffle ? labeled_examples.length : (num_samples || labeled_examples.length);
 	var count_correct = 0;
-	for (var i = 0; i < num_samples; ++i) {
-		var labeled_example = all ? labeled_examples[i] : util.RandomElement(labeled_examples);
+	this.collectExamples_(labeled_examples, num_samples, noshuffle).forEach(function(labeled_example) {
 		var true_label = labeled_example.getClassLabel();
 		var predicted_label = this.classifyExample(labeled_example);
 		if (true_label == predicted_label) {
 			++count_correct;
 		}
-	}
+	}, this);
 	return 1.0 - count_correct / num_samples;
 };
 
@@ -168,15 +172,14 @@ models.RBN.prototype.evalClassificationError = function(labeled_examples, num_sa
 //   examples are classified.
 //
 models.RBN.prototype.evalReconstructionError = function(examples, num_samples) {
-	var all = false;
-	num_samples = all ? examples.length : (num_samples || examples.length);
+	var noshuffle = false;
+	num_samples = noshuffle ? examples.length : (num_samples || examples.length);
 	var mean_reconstruction_xent = 0.0;
-	for (var i = 0; i < num_samples; ++i) {
-		var example = all ? examples[i] : util.RandomElement(examples);
+	this.collectExamples_(examples, num_samples, noshuffle).forEach(function(example, i) {
 		var reconstruction_xent = this.reconstructionErrorForExample(example);
 		// Numerically stable calculation of mean cross-entropy reconstruction loss.
 		mean_reconstruction_xent += (reconstruction_xent - mean_reconstruction_xent) / (i + 1);
-	};
+	}, this);
 	return mean_reconstruction_xent;
 };
 
@@ -404,24 +407,6 @@ models.RBN.prototype.addPhaseToGradients_ = function(factor) {
 };
 
 
-// Adjust model weights using gradients.
-// scaled_learning_rate: Learning rate scaled by inverse minibatch size.
-//
-models.RBN.prototype.applyWeightUpdates_ = function(scaled_learning_rate) {
-	for (var vi = 0; vi < this.num_visible_units_and_labels; ++vi) {
-		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-			this.weights[vi][hi] += scaled_learning_rate * this.weights_gradient[vi][hi];
-		}
-	}
-	for (var vi = 0; vi < this.num_visible_units_and_labels; ++vi) {
-		this.visible_bias[vi] += scaled_learning_rate * this.visible_bias_gradient[vi];
-	}
-	for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-		this.hidden_bias[hi] += scaled_learning_rate * this.hidden_bias_gradient[hi];
-	}
-};
-
-
 // Sample an activation of the hidden units from the current visible activation.
 // use_expected_value: Uses the expected value of each activation instead of a
 //    binary activation.
@@ -441,7 +426,6 @@ models.RBN.prototype.sampleHiddenFromVisibleUnits_ = function(use_expected_value
 			: util.SampleBernoulli(activation_probability);
 	}
 }
-
 
 
 // Sample an activation of the visible units from the current hidden activation.
@@ -488,6 +472,7 @@ models.RBN.prototype.sampleVisibleFromHiddenUnits_ = function(use_expected_value
 // propagate and ruin the net. 
 //
 models.RBN.prototype.assertFiniteness_ = function() {
+return;
 	for (var vi = 0; vi < this.num_visible_units; ++vi) {
 		console.assert(isFinite(this.visible_bias[vi], 'visible bias is non-finite: ', vi));
 		console.assert(isFinite(this.visible_activations[vi]), 'visible unit is non-finite: ', vi); 
@@ -502,31 +487,6 @@ models.RBN.prototype.assertFiniteness_ = function() {
 };
 
 
-// Helper to create and initialize a 2D array as array-of-arrays where the inner
-// level is composed of typed arrays of `ArrayType`.
-//
-models.RBN.prototype.create2DArray_ = function(ArrayType, rows, cols, init_func) {
-	var arr = new Array(rows);
-	for (var i = 0; i < rows; ++i) {	
-		arr[i] = new ArrayType(cols);
-		if (init_func) {
-			for (var j = 0; j < cols; ++j) {
-				arr[i][j] = init_func(i, j);
-			}
-		}
-	}
-	return arr;
-};
-
-
-// Helper to create and initialize a 1D of type `ArrayType`.
-//
-models.RBN.prototype.create1DArray_ = function(ArrayType, dim, init_func) {
-	var arr = new ArrayType(dim);
-	if (init_func) {
-		for (var i = 0; i < dim; ++i) {
-			arr[i] = init_func(i);
-		}
-	}
-	return arr;
+if (dist.MakeDistributedModelMasterType) {
+	models.DistributedRBN = dist.MakeDistributedModelMasterType(models.RBN);
 };

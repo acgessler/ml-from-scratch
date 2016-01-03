@@ -7,6 +7,8 @@ var train_running = false;
 var full_eval_requested = false;
 var batches = 0;
 
+var COUNT_WORKERS = 4;
+
 // Model hyperparameters
 var GIBBS_SAMPLING_STEPS = 3; // CD-k
 var HIDDEN_UNITS = 350; 
@@ -37,7 +39,7 @@ var EVAL_SIZE = 150;
 
 function Init() {
 	var pixel_count = mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT;
-	rbn = new models.RBN(pixel_count, HIDDEN_UNITS, 10);
+	rbn = new models.DistributedRBN(COUNT_WORKERS, 'restricted-boltzmann-machine/rbn.js', 'models.RBN', pixel_count, HIDDEN_UNITS, 10);
 	UpdateAll();
 }
 
@@ -149,32 +151,44 @@ function UpdateStats() {
 function TrainSingleBatch(update_all) {
 	++batches;
 	console.log('BATCH ' + batches);
-	learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, GIBBS_SAMPLING_STEPS,
-		AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE);
-	console.log('train done');
-	
-	if (update_all || batches % UPDATE_SAMPLES_FREQUENCY == 0) {
-		UpdateSampleTrainingExamples();
-		UpdateSampleTestExamples();
-		console.log('updatesamples done');
+	var selected_training_mode = $('input[type=radio,name=trainmode]:checked').attr('id');
+	var done;
+	console.log(selected_training_mode);
+	if (selected_training_mode == 'train_normal') {
+		learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS, 
+			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE);
+		done = Promise.resolve();
 	}
+	else if (selected_training_mode == 'train_dist_bounded') {
+		done = rbn.trainDistributed(train_examples, 5, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
+			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE).then();
+	}
+	return done.then(function() {
+		console.log('train done');
+		
+		if (update_all || batches % UPDATE_SAMPLES_FREQUENCY == 0) {
+			UpdateSampleTrainingExamples();
+			UpdateSampleTestExamples();
+			console.log('updatesamples done');
+		}
 
-	if (update_all || batches % UPDATE_FILTERS_FREQUENCY == 0) {
-		UpdateFilters();
-		console.log('updatefilters done');
-	}
+		if (update_all || batches % UPDATE_FILTERS_FREQUENCY == 0) {
+			UpdateFilters();
+			console.log('updatefilters done');
+		}
 
-	if (update_all || batches % UPDATE_RECONSTRUCTION_FREQUENCY == 0) {
-		UpdateReconstructionExamples();
-		console.log('addreconexamples done');
-	}
+		if (update_all || batches % UPDATE_RECONSTRUCTION_FREQUENCY == 0) {
+			UpdateReconstructionExamples();
+			console.log('addreconexamples done');
+		}
 
-	if (update_all || batches % EVAL_FREQUENCY == 0) {
-		EvalApproximate();
-		UpdateEvalChart();
-		console.log('evalapproximate done');
-	}
-	UpdateStats();
+		if (update_all || batches % EVAL_FREQUENCY == 0) {
+			EvalApproximate();
+			UpdateEvalChart();
+			console.log('evalapproximate done');
+		}
+		UpdateStats();
+	});
 }
 
 function TrainStart() {
@@ -182,23 +196,27 @@ function TrainStart() {
 		return;
 	}
 	train_running = true;
+	console.log('start training');
 	// Schedule batches with a timeout in between to allow browser event processing.
 	var continuation = function() {
 		if (!train_running) {
+			console.log('stop training');
 			return;
 		}
 		if (full_eval_requested) {
 			EvalFull();
 			full_eval_requested = false;
 		}
-		TrainSingleBatch();
-		setTimeout(continuation, 50);
+		TrainSingleBatch().then(function() {
+			setTimeout(continuation, 50);
+		});
 	};
 	continuation();
 }
 
 function TrainStop() {
 	train_running = false;
+	console.log('request stop training');
 }
 
 function AddStat(arr, stat) {

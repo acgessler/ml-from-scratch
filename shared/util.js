@@ -106,6 +106,16 @@ util.SampleNormal = /* function(mean, variance) */ (function() {
 	};
 })();
 
+util.Global = (function() {return this;})();
+
+util.Declare = function(name, value) {
+	// We could use eval() here.
+	var parts = name.split('.');
+	parts.slice(0, -1).reduce(function(prev, cur) {
+		return prev[cur];
+	}, util.Global)[parts[parts.length - 1]] = value;
+};
+
 util.IsTypedArray = function(arr) {
 	return typeof arr.BYTES_PER_ELEMENT != 'undefined';
 };
@@ -119,4 +129,57 @@ util.TypedArrayReplacer = function(key, value) {
 		return value;
 	}
 	return Array.from(value);
+};
+
+util.CollectTransferables = function(/* arguments */) {
+	var transferables = [];
+	for (var i = 0; i < arguments.length; ++i) {
+		var arg = arguments[i];
+		if (!arg) {
+			continue;
+		}
+		if (util.IsTypedArray(arg)) {
+			transferables.push(arg.buffer);
+		}
+		else if (arg instanceof ArrayBuffer) {
+			transferables.push(arg);
+		}
+		else if (Array.isArray(arg)) {
+			transferables = transferables.concat(util.CollectTransferables.apply(null, arg));
+		}
+		else for (var k in arg) {
+			transferables = transferables.concat(util.CollectTransferables(arg[k]));
+		}
+	}
+	return transferables;
+};
+
+util.Mixin = function(BaseType, MixinType, num_mixin_constructor_arguments) {
+	function TransformedType(/* arguments */) {
+		// The Mixin receives all arguments.
+		MixinType.apply(this, arguments);
+		// The BaseType does not know about the Mixin, so pass only the original arguments.
+		BaseType.apply(this, Array.prototype.slice.call(arguments, num_mixin_constructor_arguments));
+	}
+	TransformedType.prototype = Object.create(BaseType.prototype);
+	for (var k in MixinType.prototype) {
+		(function(mixinFunction, oldFunction) {
+			TransformedType.prototype[k] = oldFunction ? function() {
+				var func_args = arguments;
+				var self = this;
+				// Synthesize a special function to call the original method from
+				// before the new type was mixed in. Not calling it super, parent
+				// or base to not suggest too much of an inheritance relationship.
+				this._callOriginal = function() {
+					return oldFunction.apply(self, func_args);
+				};
+				var return_value = mixinFunction.apply(this, func_args);
+				this._callOriginal = null;
+				return return_value;
+			} : mixinFunction;
+		}) (MixinType.prototype[k], TransformedType.prototype[k]);
+	}
+	TransformedType.prototype.OriginalType = BaseType;
+	TransformedType.prototype.constructor = TransformedType;
+	return TransformedType;
 };
