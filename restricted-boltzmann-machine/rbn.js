@@ -226,6 +226,7 @@ models.RBN.prototype.classifyExample = function(example) {
 
 // Reconstruct visible unit state for the given example.
 // labeled_example: Labeled input example. However, an unlabeled example is also accepted.
+//
 // Returns an Uint8Array containing binary state for each visible unit (not including
 // units pertaining to class labels). This represents an unbiased sample of the
 // distribution learnt by the RBN, conditioned on the input example.
@@ -239,6 +240,31 @@ models.RBN.prototype.reconstructVisibleUnitsForExample = function(labeled_or_unl
 	}
 	this.sampleHiddenFromVisibleUnits_(false);
 	this.sampleVisibleFromHiddenUnits_(true);
+	return new Float32Array(this.visible_activations.slice(0, this.num_visible_units));
+};
+
+
+// Sample visible state for a given class label (created by iteratively sampling the 
+// joint distribution)
+// class_label: class label to create a sample for.
+// iterations: Number of gibbs iterations, defaults to 100.
+//
+// Returns an Uint8Array containing binary state for each visible unit (not including
+// units pertaining to class labels). This represents an unbiased sample of the
+// distribution learnt by the RBN, conditioned on the class label.
+//
+models.RBN.prototype.generateSampleForClassLabel = function(class_label, iterations) {
+	iterations = iterations || 100;
+	for (var j = 0; j < this.visible_activations.length; ++j) {
+		this.visible_activations[j] = Math.random() > 0.85 ? 1 : 0;
+	}
+	for (var i = 0; i < iterations; ++i) {
+		// Clamp class activation.
+		this.class_activations.fill(0);
+		this.class_activations[class_label] = 1;
+		this.sampleHiddenFromVisibleUnits_(false);
+		this.sampleVisibleFromHiddenUnits_(i == iterations - 1);
+	}
 	return new Float32Array(this.visible_activations.slice(0, this.num_visible_units));
 };
 

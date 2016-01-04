@@ -29,9 +29,9 @@ var full_eval_reconstruction_error = 100000;
 
 // UI/eval parameters
 var EXAMPLE_SAMPLES = 30;
-var RECON_SAMPLES = 10;
+var RECON_SAMPLES = 4;
 var EVAL_FREQUENCY = 25;
-var UPDATE_RECONSTRUCTION_FREQUENCY = 25;
+var UPDATE_RECONSTRUCTION_FREQUENCY = 50;
 var UPDATE_FILTERS_FREQUENCY = 10;
 var UPDATE_SAMPLES_FREQUENCY = 10;
 // Number of samples for approximate eval.
@@ -100,16 +100,12 @@ function UpdateReconstructionExamples() {
 		row.append('<div class="label">' + digit + '</div>');
 		
 		for (var i = 0; i < RECON_SAMPLES; ++i) {
-			// Create an example that is all zero, but sets the label index.
 			var noise_in = new Uint8Array(
 				mnist_reader.MNIST_WIDTH * mnist_reader.MNIST_HEIGHT);
-			//for (var j = 0; j < noise_in.length; ++j) {
-			//	noise_in[j] = 127 + Math.random() * 5.0;
-			//}
 			var example = new io.LabeledImageExample(digit, noise_in,
 				mnist_reader.MNIST_WIDTH,
 				mnist_reader.MNIST_HEIGHT);
-			var pixels = rbn.reconstructVisibleUnitsForExample(example);
+			var pixels = rbn.generateSampleForClassLabel(digit, 100);
 			for (var j = 0; j < pixels.length; ++j) {
 				pixels[j] = pixels[j] * 255.0;
 			}
