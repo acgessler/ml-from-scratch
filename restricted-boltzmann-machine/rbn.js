@@ -168,7 +168,7 @@ models.RBN.prototype.evalClassificationError = function(labeled_examples, num_sa
 //   examples are classified.
 //
 models.RBN.prototype.evalReconstructionError = function(examples, num_samples) {
-	var noshuffle = false;
+	var noshuffle = num_samples == -1;
 	num_samples = noshuffle ? examples.length : (num_samples || examples.length);
 	var mean_reconstruction_xent = 0.0;
 	this.collectExamples_(examples, num_samples, noshuffle).forEach(function(example, i) {
