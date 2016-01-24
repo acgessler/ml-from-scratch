@@ -46,6 +46,7 @@ dist.Worker.prototype.startWorker = function() {
 					self[k] = self.parameters[k];
 				}
 			}
+			
 			// TODO: migrate assertFiniteness() into Model base class.
 			self.assertFiniteness_();
 		}
@@ -54,7 +55,7 @@ dist.Worker.prototype.startWorker = function() {
 			// Restore references to transfered objects (these seem to become all NaN with Chrome 47+)
 			for (var k in self.parameters_update) {
 				if (typeof self[k] !== 'undefined') {
-					self[k] = self.parameters_update[k];
+					self[k + '_gradient'] = self.parameters_update[k];
 				}
 			}
 		}

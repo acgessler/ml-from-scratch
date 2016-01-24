@@ -61,10 +61,6 @@ models.RBN = function(num_visible_units, num_hidden_units, num_label_classes) {
 	// value of the activation, which is a floating-point value between 0 and 1.
 	this.visible_activations = new Float32Array(this.num_visible_units_and_labels);
 	this.hidden_activations = new Float32Array(this.num_hidden_units);
-	// Class activations are at the end of the `visible_activations`. Most of the
-	// time, they require no special handling. When they do, we access them using
-	// this convenience sub-array.
-	this.class_activations = this.visible_activations.subarray(this.num_visible_units);
 	this.weights_gradient = this.create2DArray_(Float32Array,
 		this.num_visible_units_and_labels,
 		this.num_hidden_units);
@@ -212,11 +208,13 @@ models.RBN.prototype.classifyExample = function(example) {
 	// probability, not a sampled category.
 	this.sampleVisibleFromHiddenUnits_(/* use_expected_value */ true);
 
+	var class_activations = this.visible_activations.subarray(this.num_visible_units);
+
 	var max_class_activation = 0.0;
 	var predicted_class_index = 0;
-	for (var class_index = 0; class_index < this.class_activations.length; ++class_index) {
-		if (this.class_activations[class_index] > max_class_activation) {
-			max_class_activation = this.class_activations[class_index];
+	for (var class_index = 0; class_index < class_activations.length; ++class_index) {
+		if (class_activations[class_index] > max_class_activation) {
+			max_class_activation = class_activations[class_index];
 			predicted_class_index = class_index;
 		}
 	}
@@ -258,10 +256,11 @@ models.RBN.prototype.generateSampleForClassLabel = function(class_label, iterati
 	for (var j = 0; j < this.visible_activations.length; ++j) {
 		this.visible_activations[j] = Math.random() > 0.85 ? 1 : 0;
 	}
+	var class_activations = this.visible_activations.subarray(this.num_visible_units);
 	for (var i = 0; i < iterations; ++i) {
 		// Clamp class activation.
-		this.class_activations.fill(0);
-		this.class_activations[class_label] = 1;
+		class_activations.fill(0);
+		class_activations[class_label] = 1;
 		this.sampleHiddenFromVisibleUnits_(false);
 		this.sampleVisibleFromHiddenUnits_(i == iterations - 1);
 	}
@@ -367,8 +366,9 @@ models.RBN.prototype.setVisibleActivationFromLabeledExample_ = function(labeled_
 	this.setVisibleActivationFromExample_(labeled_example);
 	// Class labels are categorical, i.e., exactly one activation is set.
 	var true_label = labeled_example.getClassLabel();
+	var class_activations = this.visible_activations.subarray(this.num_visible_units);
 	for (var class_index = 0; class_index < this.num_label_classes; ++class_index) {
-		this.class_activations[class_index] = (class_index == true_label ? 1 : 0);
+		class_activations[class_index] = (class_index == true_label ? 1 : 0);
 	}
 };
 
@@ -487,20 +487,21 @@ models.RBN.prototype.sampleVisibleFromHiddenUnits_ = function(use_expected_value
 	// Use Softmax for the K categorical class label units.
 	// p(x_i) = exp(x_i) / sum_j=0:K(exp(x_j))
 	var class_offset = this.num_visible_units;
+	var class_activations = this.visible_activations.subarray(class_offset);
 	for (var class_index = 0; class_index < this.num_label_classes; ++class_index) {
 		var vi = class_offset + class_index;
 		var activation_logit = this.visible_bias[vi];
 		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
 			activation_logit += this.weights[vi][hi] * this.hidden_activations[hi];
 		}
-		this.class_activations[class_index] = Math.exp(activation_logit);
+		class_activations[class_index] = Math.exp(activation_logit);
 	}
-	var inv_sum = 1.0 / this.class_activations.reduce(util.SumReducer);
+	var inv_sum = 1.0 / class_activations.reduce(util.SumReducer);
 	for (var class_index = 0; class_index < this.num_label_classes; ++class_index) {
-		this.class_activations[class_index] *= inv_sum;
+		class_activations[class_index] *= inv_sum;
 	}
 	if (!use_expected_value) {
-		util.SampleCategoricalInPlace(this.class_activations);
+		util.SampleCategoricalInPlace(class_activations);
 	}
 };
 

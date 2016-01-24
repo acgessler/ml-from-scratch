@@ -7,7 +7,7 @@ var train_running = false;
 var full_eval_requested = false;
 var batches = 0;
 
-var COUNT_WORKERS = 4;
+var COUNT_WORKERS = 8;
 
 // Model hyperparameters
 var GIBBS_SAMPLING_STEPS = 3; // CD-k
@@ -15,6 +15,7 @@ var HIDDEN_UNITS = 350;
 var FIXED_LEARNING_RATE = 0.01;
 var AUTO_TUNE_LEARNING_RATE = false;
 var BATCH_SIZE = 10;
+var CONSECUTIVE_DIST_BATCH_COUNT = 5; // Batches per UI update iteration.
 
 var learning_rate = -1;
 // Array-typed stats are averaged over multile values to reduce noise.
@@ -31,7 +32,7 @@ var full_eval_reconstruction_error = 100000;
 var EXAMPLE_SAMPLES = 30;
 var RECON_SAMPLES = 4;
 var EVAL_FREQUENCY = 25;
-var UPDATE_RECONSTRUCTION_FREQUENCY = 200;
+var UPDATE_RECONSTRUCTION_FREQUENCY = 1000;
 var UPDATE_FILTERS_FREQUENCY = 10;
 var UPDATE_SAMPLES_FREQUENCY = 10;
 // Number of samples for approximate eval.
@@ -144,10 +145,10 @@ function UpdateStats() {
 	);
 }
 
-var cnt = 0;
+var update_counter = 0;
 
 function TrainSingleBatch(update_all) {
-	
+	++update_counter;
 	console.log('BATCH ' + batches);
 	var selected_training_mode = $('input[type=radio,name=trainmode]:checked').attr('id');
 	var done;
@@ -159,10 +160,9 @@ function TrainSingleBatch(update_all) {
 		++batches;
 	}
 	else if (selected_training_mode == 'train_dist_bounded') {
-		done = rbn.trainDistributed(train_examples, 5, BATCH_SIZE / 5, false, GIBBS_SAMPLING_STEPS,
+		done = rbn.trainDistributed(train_examples, CONSECUTIVE_DIST_BATCH_COUNT, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
 			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE / (COUNT_WORKERS * 2)).then();
-		batches += COUNT_WORKERS;
-		update_all = (++cnt % 20) == 0; // For distributed training just update every 20.
+		batches += COUNT_WORKERS * CONSECUTIVE_DIST_BATCH_COUNT;
 	}
 	else if (selected_training_mode == 'train_dist_strict') {
 		// TODO
@@ -170,23 +170,23 @@ function TrainSingleBatch(update_all) {
 	return done.then(function() {
 		console.log('train done');
 		
-		if (update_all || batches % UPDATE_SAMPLES_FREQUENCY == 0) {
+		if (update_all || update_counter % UPDATE_SAMPLES_FREQUENCY == 0) {
 			UpdateSampleTrainingExamples();
 			UpdateSampleTestExamples();
 			console.log('updatesamples done');
 		}
 
-		if (update_all || batches % UPDATE_FILTERS_FREQUENCY == 0) {
+		if (update_all || update_counter % UPDATE_FILTERS_FREQUENCY == 0) {
 			UpdateFilters();
 			console.log('updatefilters done');
 		}
 
-		if (update_all || batches % UPDATE_RECONSTRUCTION_FREQUENCY == 0) {
-			UpdateReconstructionExamples();
+		if (update_all || update_counter % UPDATE_RECONSTRUCTION_FREQUENCY == 0) {
+			//UpdateReconstructionExamples();
 			console.log('addreconexamples done');
 		}
 
-		if (update_all || batches % EVAL_FREQUENCY == 0) {
+		if (update_all || update_counter % EVAL_FREQUENCY == 0) {
 			EvalApproximate();
 			UpdateEvalChart();
 			console.log('evalapproximate done');
