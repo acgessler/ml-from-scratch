@@ -113,6 +113,7 @@ dist.Master.prototype.trainDistributed = function(examples,
 	num_batches, batch_size, noshuffle /*, additional training arguments */ ) {
 	var self = this;
 
+	var additonal_train_arguments = Array.prototype.slice.call(arguments, 4);
 	var total_updates_received = 0;
 	return Promise.all(this.workers.map(function(worker, i) {
 		// Sample enough examples for all workers.
@@ -120,20 +121,12 @@ dist.Master.prototype.trainDistributed = function(examples,
 			.map(function(example) {
 				return example.serialize();
 			});
-		// For the first batch, have the worker transfer us their parameters so we can fill
-		// in the current state of the model.
+		// Have the worker transfer us their parameters so we can fill in the current model state.
 		worker.postMessage({
 			'sync' : true
 		});
-		worker.postMessage({
-			'train' : {
-				'examples' : worker_examples,
-				'num_batches' : num_batches,
-				'batch_size' : batch_size,
-				'extra_args' : Array.prototype.slice.call(arguments, 4)
-			}
-		});
-
+		
+		var started_training = false;
 		var last_time_worker_parameters_updated = -1;
 		return new Promise(function(resolve, reject) {
 			var remaining_batches = num_batches;
@@ -168,6 +161,17 @@ dist.Master.prototype.trainDistributed = function(examples,
 					last_time_worker_parameters_updated = total_updates_received;
 				}
 				self.returnLoanedParametersToWorker_(i);
+				if (!started_training) {
+					started_training = true;
+					worker.postMessage({
+						'train' : {
+							'examples' : worker_examples,
+							'num_batches' : num_batches,
+							'batch_size' : batch_size,
+							'extra_args' : additonal_train_arguments
+						}
+					});
+				}
 				if (remaining_batches == 0) {
 					resolve();
 				}

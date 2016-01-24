@@ -498,17 +498,33 @@ models.RBN.prototype.sampleVisibleFromHiddenUnits_ = function(use_expected_value
 // propagate and ruin the net. 
 //
 models.RBN.prototype.assertFiniteness_ = function() {
-return;
+	// Note: always return early if we find a non-finite value. Else a fully non-finite
+	// set of weights would kill Chrome's terminal too easily.
 	for (var vi = 0; vi < this.num_visible_units; ++vi) {
-		console.assert(isFinite(this.visible_bias[vi], 'visible bias is non-finite: ', vi));
-		console.assert(isFinite(this.visible_activations[vi]), 'visible unit is non-finite: ', vi); 
+		if(!isFinite(this.visible_bias[vi])) {
+			console.assert(false, 'visible bias is non-finite: ', vi);
+			return;
+		}
+		if(!isFinite(this.visible_activations[vi])) {
+			console.assert(false, 'visible unit is non-finite: ', vi);
+			return;
+		}
 		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-			console.assert(isFinite(this.weights[vi][hi]), 'weight is non-finite: ', vi, ' ', hi);
-			console.assert(isFinite(this.hidden_activations[hi]), 'hidden unit is non-finite: ', hi); 
+			if(!isFinite(this.weights[vi][hi])) {
+				console.assert(false,  'weight is non-finite: ', vi, ' ', hi);
+				return;
+			}
 		}
 	}
 	for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-		console.assert(isFinite(this.hidden_bias[hi], 'hidden bias is non-finite: ', hi));
+		if(!isFinite(this.hidden_bias[hi])) {
+			console.assert(false, 'hidden unit is non-finite: ', hi);
+			return;
+		}
+		if(!isFinite(this.hidden_activations[hi])) {
+			console.assert(false, 'hidden unit is non-finite: ', hi);
+			return;
+		}
 	}
 };
 

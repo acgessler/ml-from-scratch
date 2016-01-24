@@ -7,7 +7,7 @@ var train_running = false;
 var full_eval_requested = false;
 var batches = 0;
 
-var COUNT_WORKERS = 4;
+var COUNT_WORKERS = 6;
 
 // Model hyperparameters
 var GIBBS_SAMPLING_STEPS = 3; // CD-k
@@ -145,7 +145,7 @@ function UpdateStats() {
 }
 
 function TrainSingleBatch(update_all) {
-	++batches;
+	
 	console.log('BATCH ' + batches);
 	var selected_training_mode = $('input[type=radio,name=trainmode]:checked').attr('id');
 	var done;
@@ -154,10 +154,13 @@ function TrainSingleBatch(update_all) {
 		learning_rate = rbn.train(train_examples, 1, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS, 
 			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE);
 		done = Promise.resolve();
+		++batches;
 	}
 	else if (selected_training_mode == 'train_dist_bounded') {
-		done = rbn.trainDistributed(train_examples, 5, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
+		done = rbn.trainDistributed(train_examples, 3, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
 			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE).then();
+		batches += COUNT_WORKERS * 3;
+		update_all = true;
 	}
 	return done.then(function() {
 		console.log('train done');

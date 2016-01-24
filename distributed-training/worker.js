@@ -40,16 +40,28 @@ dist.Worker.prototype.startWorker = function() {
 		// Register any returned parameter loans.
 		if (message['parameters']) {
 			self.parameters = message['parameters'];
+			// Restore references to transferred objects (these seem to become all NaN with Chrome 47+)
+			for (var k in self.parameters) {
+				if (typeof self[k] !== 'undefined') {
+					self[k] = self.parameters[k];
+				}
+			}
+			// TODO: migrate assertFiniteness() into Model base class.
+			self.assertFiniteness_();
 		}
 		if (message['parameters_update']) {
-			self.parameters_update = message['parameters_update'];
+			self.parameters_update = message['parameters_update'];			
+			// Restore references to transfered objects (these seem to become all NaN with Chrome 47+)
+			for (var k in self.parameters_update) {
+				if (typeof self[k] !== 'undefined') {
+					self[k] = self.parameters_update[k];
+				}
+			}
 		}
 		if (self.call_when_parameter_loan_returned && self.parameters_update && self.parameters) {
-			self.assertFiniteness_();
 			self.call_when_parameter_loan_returned();
 			self.call_when_parameter_loan_returned = null;
 		}
-
 		if (message['sync']) {
 			var response = {
 				'parameters' : self.parameters
