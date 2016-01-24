@@ -144,6 +144,8 @@ function UpdateStats() {
 	);
 }
 
+var cnt = 0;
+
 function TrainSingleBatch(update_all) {
 	
 	console.log('BATCH ' + batches);
@@ -160,7 +162,7 @@ function TrainSingleBatch(update_all) {
 		done = rbn.trainDistributed(train_examples, 3, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
 			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE).then();
 		batches += COUNT_WORKERS * 3;
-		update_all = true;
+		update_all = (++cnt % 5) == 0;
 	}
 	return done.then(function() {
 		console.log('train done');

@@ -307,7 +307,7 @@ models.RBN.prototype.pickLearningRateFromWeightsHistogram_ = function() {
 // Returns smoothed and clamped learning rate.
 //
 models.RBN.prototype.smoothLearningRate_ = function(new_learning_rate) {
-	var MAX_LEARNING_RATE = 0.1;
+	var MAX_LEARNING_RATE = 0.01;
 	var MIN_LEARNING_RATE = 0.00001;
 	var DECAY_FACTOR = 0.0001;
 
@@ -416,19 +416,29 @@ models.RBN.prototype.clearGradients_ = function() {
 //
 models.RBN.prototype.addPhaseToGradients_ = function(factor) {
 	// The gradient is the outer product of the visible and hidden activation vectors.
-	for (var vi = 0; vi < this.num_visible_units_and_labels; ++vi) {
-		for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-			// TODO: using one array for accumulating positive and negative
-			// phase across a minibatch might be prone to cancellation.
-			this.weights_gradient[vi][hi] += factor * this.visible_activations[vi] *
-				this.hidden_activations[hi];
+	// Code below is the hotspot of the training phase, so some optimization.
+	var vi_len = this.num_visible_units_and_labels;
+	var hi_len = this.num_hidden_units;
+	var weights_gradient = this.weights_gradient;
+	var visible_activations = this.visible_activations;
+	var hidden_activations = this.hidden_activations;
+	var visible_bias_gradient = this.visible_bias_gradient;
+	var hidden_bias_gradient = this.hidden_bias_gradient;
+	for (var vi = 0; vi < vi_len; ++vi) {
+		var visible_activations_vi = visible_activations[vi];
+		if (visible_activations_vi == 0) { 
+			// True for > 50% of input pixels, however not when Gibbs-sampling back
+			// and forth using the expected value.
+			continue;
 		}
+		var weights_gradient_vi = weights_gradient[vi];
+		for (var hi = 0; hi < hi_len; ++hi) {
+			weights_gradient_vi[hi] += factor * visible_activations_vi * hidden_activations[hi];
+		}
+		visible_bias_gradient[vi] += factor * visible_activations_vi;
 	}
-	for (var vi = 0; vi < this.num_visible_units_and_labels; ++vi) {
-		this.visible_bias_gradient[vi] += factor * this.visible_activations[vi];
-	}
-	for (var hi = 0; hi < this.num_hidden_units; ++hi) {
-		this.hidden_bias_gradient[hi] += factor * this.hidden_activations[hi];
+	for (var hi = 0; hi < hi_len; ++hi) {
+		hidden_bias_gradient[hi] += factor * hidden_activations[hi];
 	}
 };
 
