@@ -7,14 +7,14 @@ var train_running = false;
 var full_eval_requested = false;
 var batches = 0;
 
-var COUNT_WORKERS = 6;
+var COUNT_WORKERS = 4;
 
 // Model hyperparameters
 var GIBBS_SAMPLING_STEPS = 3; // CD-k
 var HIDDEN_UNITS = 350; 
 var FIXED_LEARNING_RATE = 0.01;
-var AUTO_TUNE_LEARNING_RATE = true;
-var BATCH_SIZE = 20;
+var AUTO_TUNE_LEARNING_RATE = false;
+var BATCH_SIZE = 10;
 
 var learning_rate = -1;
 // Array-typed stats are averaged over multile values to reduce noise.
@@ -31,7 +31,7 @@ var full_eval_reconstruction_error = 100000;
 var EXAMPLE_SAMPLES = 30;
 var RECON_SAMPLES = 4;
 var EVAL_FREQUENCY = 25;
-var UPDATE_RECONSTRUCTION_FREQUENCY = 50;
+var UPDATE_RECONSTRUCTION_FREQUENCY = 200;
 var UPDATE_FILTERS_FREQUENCY = 10;
 var UPDATE_SAMPLES_FREQUENCY = 10;
 // Number of samples for approximate eval.
@@ -159,10 +159,13 @@ function TrainSingleBatch(update_all) {
 		++batches;
 	}
 	else if (selected_training_mode == 'train_dist_bounded') {
-		done = rbn.trainDistributed(train_examples, 3, BATCH_SIZE, false, GIBBS_SAMPLING_STEPS,
-			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE).then();
-		batches += COUNT_WORKERS * 3;
-		update_all = (++cnt % 5) == 0;
+		done = rbn.trainDistributed(train_examples, 5, BATCH_SIZE / 5, false, GIBBS_SAMPLING_STEPS,
+			AUTO_TUNE_LEARNING_RATE ? -1 : FIXED_LEARNING_RATE / (COUNT_WORKERS * 2)).then();
+		batches += COUNT_WORKERS;
+		update_all = (++cnt % 20) == 0; // For distributed training just update every 20.
+	}
+	else if (selected_training_mode == 'train_dist_strict') {
+		// TODO
 	}
 	return done.then(function() {
 		console.log('train done');

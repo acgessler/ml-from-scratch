@@ -143,7 +143,6 @@ dist.Master.prototype.trainDistributed = function(examples,
 						message['scaled_learning_rate'],
 						self.worker_parameters_update[i]
 					);
-					self.assertFiniteness_();
 					++total_updates_received;
 					--remaining_batches;
 				}
@@ -192,6 +191,7 @@ dist.Master.prototype.trainDistributedWithExplicitSynchronization = function(exa
 	num_batches, batch_size, noshuffle /*, additional training arguments */ ) {
 	var self = this;
 
+	var additonal_train_arguments = Array.prototype.slice.call(arguments, 4);
 	var all_batches_done = Promise.resolve();
 	// Batch boundaries act as a sync point to ensure model replicas stay in sync.
 	for (var batch = 0; batch < num_batches; ++batch) {
@@ -212,7 +212,7 @@ dist.Master.prototype.trainDistributedWithExplicitSynchronization = function(exa
 					'examples' : worker_examples,
 					'num_batches' : 1,
 					'batch_size' : batch_size,
-					'extra_args' : Array.prototype.slice.call(arguments, 4)
+					'extra_args' : additonal_train_arguments
 				}
 			});
 			return new Promise(function(resolve, reject) {

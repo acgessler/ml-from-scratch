@@ -307,7 +307,7 @@ models.RBN.prototype.pickLearningRateFromWeightsHistogram_ = function() {
 // Returns smoothed and clamped learning rate.
 //
 models.RBN.prototype.smoothLearningRate_ = function(new_learning_rate) {
-	var MAX_LEARNING_RATE = 0.01;
+	var MAX_LEARNING_RATE = 0.1;
 	var MIN_LEARNING_RATE = 0.00001;
 	var DECAY_FACTOR = 0.0001;
 
@@ -393,6 +393,8 @@ models.RBN.prototype.updateGradientsFromExample_ = function(training_example, gi
 		is_last = gibbs_step == 0;
 		// Empirically, always sampling the visible units vs. taking the expectation
 		// performs much better at discriminating digits @ MNIST (~4.8% vs 6% error)
+		// It also makes gradient updates significantly faster since most of the
+		// visible units are 0, allowing us to skip whole rows.
 		this.sampleVisibleFromHiddenUnits_();
 		this.sampleHiddenFromVisibleUnits_(is_last);
 	}
